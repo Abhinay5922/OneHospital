@@ -5,7 +5,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
 import { useSocket } from '../../context/SocketContext';
 import emergencyService from '../../services/emergencyService';
 import EmergencyCallInterface from '../../components/emergency/EmergencyCallInterface';
@@ -21,7 +20,6 @@ import {
 const EmergencyConsultation = () => {
   const { callId } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { socket } = useSocket();
   
   const [call, setCall] = useState(null);

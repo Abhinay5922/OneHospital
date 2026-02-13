@@ -32,6 +32,7 @@ const EmergencyCallInterface = ({ callId, onCallEnd }) => {
   const [chatHistory, setChatHistory] = useState([]);
   const [callDuration, setCallDuration] = useState(0);
   const [firstAidInstructions, setFirstAidInstructions] = useState([]);
+  // eslint-disable-next-line no-unused-vars
   const [doctorNotes, setDoctorNotes] = useState('');
   const [connectionStatus, setConnectionStatus] = useState('Connecting...');
   
@@ -105,7 +106,7 @@ const EmergencyCallInterface = ({ callId, onCallEnd }) => {
       setConnectionStatus('Failed to connect');
       toast.error('Failed to access camera/microphone. Please check permissions.');
     }
-  }, [callId, socket]);
+  }, [callId, socket, setupPeerConnection]);
 
   const cleanup = useCallback(() => {
     if (localStreamRef.current) {
@@ -143,7 +144,7 @@ const EmergencyCallInterface = ({ callId, onCallEnd }) => {
         setTimeout(() => createOffer(), 1000);
       }
     }
-  }, [callId, user?.role]);
+  }, [callId, user?.role, createOffer]);
 
   const handleVideoCallStarted = useCallback((data) => {
     if (data.callId === callId) {
@@ -263,7 +264,7 @@ const EmergencyCallInterface = ({ callId, onCallEnd }) => {
 
   
 
-  const setupPeerConnection = () => {
+  const setupPeerConnection = useCallback(() => {
     try {
       const peerConnection = new RTCPeerConnection(rtcConfiguration);
       peerConnectionRef.current = peerConnection;
@@ -310,11 +311,11 @@ const EmergencyCallInterface = ({ callId, onCallEnd }) => {
       console.error('Error setting up peer connection:', error);
       toast.error('Failed to setup video connection');
     }
-  };
+  }, [socket, callId]);
 
   
 
-  const createOffer = async () => {
+  const createOffer = useCallback(async () => {
     try {
       const peerConnection = peerConnectionRef.current;
       if (!peerConnection) return;
@@ -329,7 +330,7 @@ const EmergencyCallInterface = ({ callId, onCallEnd }) => {
     } catch (error) {
       console.error('Error creating offer:', error);
     }
-  };
+  }, [callId, socket]);
 
   
 

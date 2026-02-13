@@ -83,15 +83,17 @@ export const SocketProvider = ({ children }) => {
       return () => {
         newSocket.close();
       };
-    } else {
-      // Disconnect socket if user is not authenticated
-      if (socket) {
-        socket.close();
-        setSocket(null);
-        setConnected(false);
-      }
     }
   }, [isAuthenticated, user]);
+
+  // Close existing socket when user logs out
+  useEffect(() => {
+    if (!isAuthenticated && socket) {
+      socket.close();
+      setSocket(null);
+      setConnected(false);
+    }
+  }, [isAuthenticated, socket]);
 
   // Join hospital room
   const joinHospitalRoom = (hospitalId) => {

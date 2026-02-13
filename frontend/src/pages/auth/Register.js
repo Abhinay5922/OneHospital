@@ -136,18 +136,7 @@ const Register = () => {
     }
   };
 
-  const getRoleDescription = (role) => {
-    switch (role) {
-      case 'patient':
-        return 'Book appointments and manage your healthcare';
-      case 'hospital_admin':
-        return 'Manage hospital operations and staff';
-      case 'doctor':
-        return 'Manage appointments and patient consultations';
-      default:
-        return '';
-    }
-  };
+  
 
   if (loading) {
     return (
@@ -586,15 +575,15 @@ const Register = () => {
           {/* Terms and Privacy */}
           <div className="text-center">
             <p className="text-xs text-gray-500">
-              By creating an account, you agree to our{' '}
-              <a href="#" className="text-primary-600 hover:text-primary-500">
-                Terms of Service
-              </a>{' '}
-              and{' '}
-              <a href="#" className="text-primary-600 hover:text-primary-500">
-                Privacy Policy
-              </a>
-            </p>
+                By creating an account, you agree to our{' '}
+                <Link to="/terms" className="text-primary-600 hover:text-primary-500">
+                  Terms of Service
+                </Link>{' '}
+                and{' '}
+                <Link to="/privacy" className="text-primary-600 hover:text-primary-500">
+                  Privacy Policy
+                </Link>
+              </p>
           </div>
         </form>
       </div>
