@@ -1,0 +1,29 @@
+{
+  "name": "one-hospital",
+  "version": "1.0.0",
+  "description": "Smart Multi-Hospital Appointment & Queue Management System",
+  "main": "simple-setup.js",
+  "scripts": {
+    "setup": "node simple-setup.js",
+    "install-all": "node simple-setup.js",
+    "start": "echo 'Use npm run setup first, then start backend and frontend separately'",
+    "dev": "echo 'Backend: cd backend && npm run dev | Frontend: cd frontend && npm start'"
+  },
+  "keywords": [
+    "hospital",
+    "appointment",
+    "queue",
+    "management",
+    "healthcare"
+  ],
+  "author": "MCA Final Year Project",
+  "license": "MIT",
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "dependencies": {
+    "axios": "^1.13.3",
+    "socket.io-client": "^4.8.3"
+  }
+}
