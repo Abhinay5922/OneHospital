@@ -13,7 +13,6 @@ const ReferralForm = ({ appointment, onClose, onSuccess }) => {
   const [availableDoctors, setAvailableDoctors] = useState([]);
   const [loadingDoctors, setLoadingDoctors] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [selectedSpecialty, setSelectedSpecialty] = useState('');
 
   const {
     register,

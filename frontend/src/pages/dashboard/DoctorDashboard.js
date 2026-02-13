@@ -3,7 +3,7 @@
  * Comprehensive dashboard for doctor users with all features
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useSocket } from '../../context/SocketContext';
 import { useQuery, useQueryClient } from 'react-query';
@@ -19,12 +19,10 @@ import {
   CalendarDaysIcon,
   QueueListIcon,
   DocumentTextIcon,
-  BellIcon,
   ArrowPathIcon,
   EyeIcon,
   CheckIcon,
   XMarkIcon,
-  UserGroupIcon,
   MapPinIcon,
   UserIcon
 } from '@heroicons/react/24/outline';
@@ -47,7 +45,7 @@ const DoctorDashboard = () => {
   const [referralAppointment, setReferralAppointment] = useState(null);
 
   // Fetch today's appointments with optimized caching strategy
-  const { data: appointmentsData, isLoading: appointmentsLoading, refetch: refetchAppointments, error: appointmentsError } = useQuery(
+  const { data: appointmentsData, isLoading: appointmentsLoading, refetch: refetchAppointments } = useQuery(
     ['doctor-appointments', user?._id, selectedDate],
     async () => {
       console.log('Fetching doctor appointments for date:', selectedDate, 'doctorId:', user?._id);
@@ -95,7 +93,7 @@ const DoctorDashboard = () => {
   );
   
   // Manual fetch function that bypasses React Query completely
-  const fetchAppointmentsManually = async () => {
+  const fetchAppointmentsManually = useCallback(async () => {
     if (!user?._id) return;
     
     setManualLoading(true);
@@ -111,7 +109,7 @@ const DoctorDashboard = () => {
     } finally {
       setManualLoading(false);
     }
-  };
+  }, [user?._id, selectedDate]);
   
   // Use React Query data first, fallback to manual fetch
   const appointments = appointmentsData?.data?.appointments || manualAppointments || [];
@@ -135,7 +133,7 @@ const DoctorDashboard = () => {
       // Also trigger React Query refetch
       setTimeout(() => refetchAppointments(), 100);
     }
-  }, [selectedDate, user?._id, user?.role, queryClient, refetchAppointments]);
+  }, [selectedDate, user?._id, user?.role, queryClient, refetchAppointments, fetchAppointmentsManually]);
 
   useEffect(() => {
     // Set initial emergency availability from user data

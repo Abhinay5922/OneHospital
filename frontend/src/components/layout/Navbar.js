@@ -12,7 +12,6 @@ import {
   UserCircleIcon,
   HomeIcon,
   MagnifyingGlassIcon,
-  CalendarIcon,
   ChartBarIcon,
   ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/outline';

@@ -3,7 +3,7 @@
  * Dashboard for patient users showing appointments and quick actions
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from 'react-query';
 import { appointmentService } from '../../services/appointmentService';
@@ -18,7 +18,6 @@ import {
   MapPinIcon,
   UserIcon,
   PlusIcon,
-  EyeIcon,
   ArrowPathIcon,
   ExclamationTriangleIcon,
   StarIcon,
@@ -56,7 +55,7 @@ const PatientDashboard = () => {
   );
 
   // Manual fetch function
-  const fetchAppointmentsManually = async () => {
+  const fetchAppointmentsManually = useCallback(async () => {
     if (!user?._id) return;
     
     setManualLoading(true);
@@ -71,10 +70,10 @@ const PatientDashboard = () => {
     } finally {
       setManualLoading(false);
     }
-  };
+  }, [user?._id]);
 
   // Fetch rated appointments
-  const fetchRatedAppointments = async () => {
+  const fetchRatedAppointments = useCallback(async () => {
     if (!user?._id) return;
     
     try {
@@ -86,7 +85,7 @@ const PatientDashboard = () => {
     } catch (error) {
       console.error('Failed to fetch rated appointments:', error);
     }
-  };
+  }, [user?._id]);
 
   useEffect(() => {
     if (user?._id) {
@@ -95,7 +94,7 @@ const PatientDashboard = () => {
       fetchRatedAppointments();
       setTimeout(() => refetch(), 100);
     }
-  }, [user?._id, queryClient, refetch]);
+  }, [user?._id, queryClient, refetch, fetchAppointmentsManually, fetchRatedAppointments]);
 
   const appointments = appointmentsData?.data?.appointments || manualAppointments || [];
   const isActuallyLoading = isLoading || manualLoading;

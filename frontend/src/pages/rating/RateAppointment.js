@@ -3,7 +3,7 @@
  * Page for patients to rate their completed appointments
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { appointmentService } from '../../services/appointmentService';
@@ -25,16 +25,7 @@ const RateAppointment = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    if (appointmentId) {
-      fetchAppointment();
-    } else {
-      setError('No appointment ID provided');
-      setLoading(false);
-    }
-  }, [appointmentId]);
-
-  const fetchAppointment = async () => {
+  const fetchAppointment = useCallback(async () => {
     try {
       setLoading(true);
       const response = await appointmentService.getAppointmentById(appointmentId);
@@ -63,7 +54,16 @@ const RateAppointment = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [appointmentId, user._id]);
+
+  useEffect(() => {
+    if (appointmentId) {
+      fetchAppointment();
+    } else {
+      setError('No appointment ID provided');
+      setLoading(false);
+    }
+  }, [appointmentId, fetchAppointment]);
 
   const handleRatingSubmit = () => {
     toast.success('Thank you for your feedback!');

@@ -3,7 +3,7 @@
  * Comprehensive dashboard for hospital admin users
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { hospitalService } from '../../services/hospitalService';
 import toast from 'react-hot-toast';
@@ -29,11 +29,7 @@ const HospitalDashboard = () => {
   const [hospitalInfo, setHospitalInfo] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
 
-  useEffect(() => {
-    loadDashboardData();
-  }, [user]);
-
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(async () => {
     if (!user?.hospitalId) {
       setLoading(false);
       return;
@@ -59,7 +55,11 @@ const HospitalDashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, [user, loadDashboardData]);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -759,11 +759,7 @@ const DoctorsTab = ({ hospitalId }) => {
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
 
-  useEffect(() => {
-    loadDoctors();
-  }, [hospitalId]);
-
-  const loadDoctors = async () => {
+  const loadDoctors = useCallback(async () => {
     if (!hospitalId) return;
     
     try {
@@ -776,7 +772,11 @@ const DoctorsTab = ({ hospitalId }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [hospitalId]);
+
+  useEffect(() => {
+    loadDoctors();
+  }, [hospitalId, loadDoctors]);
 
   const handleAddDoctor = () => {
     setSelectedDoctor(null);
@@ -1614,11 +1614,7 @@ const AnalyticsTab = ({ hospitalInfo }) => {
   const [analyticsData, setAnalyticsData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadAnalyticsData();
-  }, [hospitalInfo]);
-
-  const loadAnalyticsData = async () => {
+  const loadAnalyticsData = useCallback(async () => {
     if (!hospitalInfo?._id) return;
     
     try {
@@ -1631,7 +1627,11 @@ const AnalyticsTab = ({ hospitalInfo }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [hospitalInfo?._id]);
+
+  useEffect(() => {
+    loadAnalyticsData();
+  }, [hospitalInfo, loadAnalyticsData]);
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {

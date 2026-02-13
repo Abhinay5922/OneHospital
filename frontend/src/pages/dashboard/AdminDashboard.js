@@ -3,7 +3,7 @@
  * Dashboard for super admin users with hospital approval functionality
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { adminService } from '../../services/adminService';
 import {
@@ -13,14 +13,12 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   ExclamationTriangleIcon,
-  EyeIcon,
   MapPinIcon,
   PhoneIcon,
   EnvelopeIcon
 } from '@heroicons/react/24/outline';
 
 const AdminDashboard = () => {
-  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [stats, setStats] = useState(null);
   const [pendingHospitals, setPendingHospitals] = useState([]);
@@ -30,11 +28,7 @@ const AdminDashboard = () => {
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectionModal, setShowRejectionModal] = useState(false);
 
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
-
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(async () => {
     try {
       setLoading(true);
       const [statsResponse, pendingResponse] = await Promise.all([
@@ -49,7 +43,11 @@ const AdminDashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, [loadDashboardData]);
 
   const handleApproveHospital = async (hospitalId) => {
     try {

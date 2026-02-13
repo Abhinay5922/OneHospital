@@ -3,7 +3,7 @@
  * Main page for emergency video consultations
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useSocket } from '../../context/SocketContext';
@@ -14,7 +14,6 @@ import {
   ExclamationTriangleIcon,
   ClockIcon,
   UserIcon,
-  PhoneIcon,
   CheckCircleIcon,
   XCircleIcon
 } from '@heroicons/react/24/outline';
@@ -27,15 +26,67 @@ const EmergencyConsultation = () => {
   
   const [call, setCall] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [availableDoctors, setAvailableDoctors] = useState([]);
   const [waitingTime, setWaitingTime] = useState(0);
   const [showCallInterface, setShowCallInterface] = useState(false);
+
+  const fetchCallDetails = useCallback(async () => {
+    try {
+      const response = await emergencyService.getEmergencyCall(callId);
+      if (response.data?.success) {
+        setCall(response.data.data.call);
+        
+        // If call is active or connecting, show call interface
+        if (['connecting', 'active'].includes(response.data.data.call.status)) {
+          setShowCallInterface(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching call details:', error);
+      toast.error('Failed to load emergency call');
+      navigate('/dashboard/patient');
+    } finally {
+      setLoading(false);
+    }
+  }, [callId, navigate]);
 
   useEffect(() => {
     if (callId) {
       fetchCallDetails();
     }
+  }, [callId, fetchCallDetails]);
+
+  const handleCallAccepted = useCallback((data) => {
+    if (data.callId === callId) {
+      setCall(data.call);
+      toast.success(`Dr. ${data.doctor.name} accepted your emergency call!`);
+    }
   }, [callId]);
+
+  const handleCallTaken = useCallback((data) => {
+    if (data.callId === callId && call?.status === 'pending') {
+      toast.error('This emergency call was accepted by another doctor');
+      navigate('/dashboard/patient');
+    }
+  }, [callId, call?.status, navigate]);
+
+  const handleVideoCallStarted = useCallback((data) => {
+    if (data.callId === callId) {
+      setShowCallInterface(true);
+    }
+  }, [callId]);
+
+  const handleCallEnded = useCallback((data) => {
+    if (data.callId === callId) {
+      setCall(data.call);
+      setShowCallInterface(false);
+      toast.success('Emergency call completed');
+      
+      // Show call summary or redirect
+      setTimeout(() => {
+        navigate('/dashboard/patient');
+      }, 3000);
+    }
+  }, [callId, navigate]);
 
   useEffect(() => {
     if (socket && callId) {
@@ -54,7 +105,7 @@ const EmergencyConsultation = () => {
         socket.emit('leave-emergency-call', callId);
       };
     }
-  }, [socket, callId]);
+  }, [socket, callId, handleCallAccepted, handleCallTaken, handleVideoCallStarted, handleCallEnded]);
 
   // Waiting time counter
   useEffect(() => {
@@ -73,58 +124,7 @@ const EmergencyConsultation = () => {
     };
   }, [call?.status, call?.createdAt]);
 
-  const fetchCallDetails = async () => {
-    try {
-      const response = await emergencyService.getEmergencyCall(callId);
-      if (response.data?.success) {
-        setCall(response.data.data.call);
-        
-        // If call is active or connecting, show call interface
-        if (['connecting', 'active'].includes(response.data.data.call.status)) {
-          setShowCallInterface(true);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching call details:', error);
-      toast.error('Failed to load emergency call');
-      navigate('/dashboard/patient');
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const handleCallAccepted = (data) => {
-    if (data.callId === callId) {
-      setCall(data.call);
-      toast.success(`Dr. ${data.doctor.name} accepted your emergency call!`);
-    }
-  };
-
-  const handleCallTaken = (data) => {
-    if (data.callId === callId && call?.status === 'pending') {
-      toast.error('This emergency call was accepted by another doctor');
-      navigate('/dashboard/patient');
-    }
-  };
-
-  const handleVideoCallStarted = (data) => {
-    if (data.callId === callId) {
-      setShowCallInterface(true);
-    }
-  };
-
-  const handleCallEnded = (data) => {
-    if (data.callId === callId) {
-      setCall(data.call);
-      setShowCallInterface(false);
-      toast.success('Emergency call completed');
-      
-      // Show call summary or redirect
-      setTimeout(() => {
-        navigate('/dashboard/patient');
-      }, 3000);
-    }
-  };
 
   const cancelEmergencyCall = async () => {
     try {

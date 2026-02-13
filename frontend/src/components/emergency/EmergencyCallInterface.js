@@ -3,7 +3,7 @@
  * Video call interface for emergency consultations with WebRTC
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useSocket } from '../../context/SocketContext';
 import emergencyService from '../../services/emergencyService';
@@ -49,58 +49,7 @@ const EmergencyCallInterface = ({ callId, onCallEnd }) => {
     ]
   };
 
-  useEffect(() => {
-    if (callId) {
-      fetchCallDetails();
-      initializeCall();
-    }
-
-    return () => {
-      cleanup();
-    };
-  }, [callId]);
-
-  useEffect(() => {
-    if (socket) {
-      socket.on('emergency-call-accepted', handleCallAccepted);
-      socket.on('video-call-started', handleVideoCallStarted);
-      socket.on('emergency-call-ended', handleCallEnded);
-      socket.on('emergency-chat-message', handleChatMessage);
-      
-      // WebRTC signaling events
-      socket.on('webrtc-offer', handleWebRTCOffer);
-      socket.on('webrtc-answer', handleWebRTCAnswer);
-      socket.on('webrtc-ice-candidate', handleICECandidate);
-
-      return () => {
-        socket.off('emergency-call-accepted');
-        socket.off('video-call-started');
-        socket.off('emergency-call-ended');
-        socket.off('emergency-chat-message');
-        socket.off('webrtc-offer');
-        socket.off('webrtc-answer');
-        socket.off('webrtc-ice-candidate');
-      };
-    }
-  }, [socket]);
-
-  // Timer effect
-  useEffect(() => {
-    let interval;
-    if (callStatus === 'active' && callStartTimeRef.current) {
-      interval = setInterval(() => {
-        const now = new Date();
-        const duration = Math.floor((now - callStartTimeRef.current) / 1000);
-        setCallDuration(duration);
-      }, 1000);
-    }
-
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [callStatus]);
-
-  const fetchCallDetails = async () => {
+  const fetchCallDetails = useCallback(async () => {
     try {
       const response = await emergencyService.getEmergencyCall(callId);
       if (response.data?.success) {
@@ -119,9 +68,9 @@ const EmergencyCallInterface = ({ callId, onCallEnd }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [callId]);
 
-  const initializeCall = async () => {
+  const initializeCall = useCallback(async () => {
     try {
       setConnectionStatus('Accessing camera and microphone...');
       
@@ -156,7 +105,163 @@ const EmergencyCallInterface = ({ callId, onCallEnd }) => {
       setConnectionStatus('Failed to connect');
       toast.error('Failed to access camera/microphone. Please check permissions.');
     }
-  };
+  }, [callId, socket]);
+
+  const cleanup = useCallback(() => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(track => track.stop());
+    }
+    
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+    }
+
+    if (socket) {
+      socket.emit('leave-emergency-call', callId);
+    }
+  }, [callId, socket]);
+
+  useEffect(() => {
+    if (callId) {
+      fetchCallDetails();
+      initializeCall();
+    }
+
+    return () => {
+      cleanup();
+    };
+  }, [callId, fetchCallDetails, initializeCall, cleanup]);
+
+  const handleCallAccepted = useCallback((data) => {
+    if (data.callId === callId) {
+      setCall(data.call);
+      setCallStatus('connecting');
+      toast.success(`Dr. ${data.doctor.name} accepted your emergency call`);
+      
+      // If we're the patient, create offer
+      if (user.role === 'patient') {
+        setTimeout(() => createOffer(), 1000);
+      }
+    }
+  }, [callId, user?.role]);
+
+  const handleVideoCallStarted = useCallback((data) => {
+    if (data.callId === callId) {
+      setCallStatus('active');
+      if (!callStartTimeRef.current) {
+        callStartTimeRef.current = new Date();
+      }
+      toast.success('Video call started');
+    }
+  }, [callId]);
+
+  const handleCallEnded = useCallback((data) => {
+    if (data.callId === callId) {
+      setCallStatus('completed');
+      cleanup();
+      if (onCallEnd) {
+        onCallEnd(data.call);
+      }
+    }
+  }, [callId, cleanup, onCallEnd]);
+
+  const handleChatMessage = useCallback((data) => {
+    if (data.callId === callId) {
+      setChatHistory(prev => [...prev, {
+        sender: data.sender,
+        message: data.message,
+        timestamp: data.timestamp
+      }]);
+    }
+  }, [callId]);
+
+  const handleWebRTCOffer = useCallback(async (data) => {
+    if (data.callId !== callId) return;
+    
+    try {
+      const peerConnection = peerConnectionRef.current;
+      if (!peerConnection) return;
+
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
+      const answer = await peerConnection.createAnswer();
+      await peerConnection.setLocalDescription(answer);
+      
+      socket.emit('webrtc-answer', {
+        callId,
+        answer: answer
+      });
+    } catch (error) {
+      console.error('Error handling WebRTC offer:', error);
+    }
+  }, [callId, socket]);
+
+  const handleWebRTCAnswer = useCallback(async (data) => {
+    if (data.callId !== callId) return;
+    
+    try {
+      const peerConnection = peerConnectionRef.current;
+      if (!peerConnection) return;
+
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+    } catch (error) {
+      console.error('Error handling WebRTC answer:', error);
+    }
+  }, [callId]);
+
+  const handleICECandidate = useCallback(async (data) => {
+    if (data.callId !== callId) return;
+    
+    try {
+      const peerConnection = peerConnectionRef.current;
+      if (!peerConnection) return;
+
+      await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+    } catch (error) {
+      console.error('Error handling ICE candidate:', error);
+    }
+  }, [callId]);
+
+  useEffect(() => {
+    if (socket) {
+      socket.on('emergency-call-accepted', handleCallAccepted);
+      socket.on('video-call-started', handleVideoCallStarted);
+      socket.on('emergency-call-ended', handleCallEnded);
+      socket.on('emergency-chat-message', handleChatMessage);
+      
+      // WebRTC signaling events
+      socket.on('webrtc-offer', handleWebRTCOffer);
+      socket.on('webrtc-answer', handleWebRTCAnswer);
+      socket.on('webrtc-ice-candidate', handleICECandidate);
+
+      return () => {
+        socket.off('emergency-call-accepted');
+        socket.off('video-call-started');
+        socket.off('emergency-call-ended');
+        socket.off('emergency-chat-message');
+        socket.off('webrtc-offer');
+        socket.off('webrtc-answer');
+        socket.off('webrtc-ice-candidate');
+      };
+    }
+  }, [socket, handleCallAccepted, handleVideoCallStarted, handleCallEnded, handleChatMessage, handleWebRTCOffer, handleWebRTCAnswer, handleICECandidate]);
+
+  // Timer effect
+  useEffect(() => {
+    let interval;
+    if (callStatus === 'active' && callStartTimeRef.current) {
+      interval = setInterval(() => {
+        const now = new Date();
+        const duration = Math.floor((now - callStartTimeRef.current) / 1000);
+        setCallDuration(duration);
+      }, 1000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [callStatus]);
+
+  
 
   const setupPeerConnection = () => {
     try {
@@ -207,51 +312,7 @@ const EmergencyCallInterface = ({ callId, onCallEnd }) => {
     }
   };
 
-  const handleWebRTCOffer = async (data) => {
-    if (data.callId !== callId) return;
-    
-    try {
-      const peerConnection = peerConnectionRef.current;
-      if (!peerConnection) return;
-
-      await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
-      const answer = await peerConnection.createAnswer();
-      await peerConnection.setLocalDescription(answer);
-
-      socket.emit('webrtc-answer', {
-        callId,
-        answer: answer
-      });
-    } catch (error) {
-      console.error('Error handling WebRTC offer:', error);
-    }
-  };
-
-  const handleWebRTCAnswer = async (data) => {
-    if (data.callId !== callId) return;
-    
-    try {
-      const peerConnection = peerConnectionRef.current;
-      if (!peerConnection) return;
-
-      await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
-    } catch (error) {
-      console.error('Error handling WebRTC answer:', error);
-    }
-  };
-
-  const handleICECandidate = async (data) => {
-    if (data.callId !== callId) return;
-    
-    try {
-      const peerConnection = peerConnectionRef.current;
-      if (!peerConnection) return;
-
-      await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-    } catch (error) {
-      console.error('Error handling ICE candidate:', error);
-    }
-  };
+  
 
   const createOffer = async () => {
     try {
@@ -270,48 +331,7 @@ const EmergencyCallInterface = ({ callId, onCallEnd }) => {
     }
   };
 
-  const handleCallAccepted = (data) => {
-    if (data.callId === callId) {
-      setCall(data.call);
-      setCallStatus('connecting');
-      toast.success(`Dr. ${data.doctor.name} accepted your emergency call`);
-      
-      // If we're the patient, create offer
-      if (user.role === 'patient') {
-        setTimeout(() => createOffer(), 1000);
-      }
-    }
-  };
-
-  const handleVideoCallStarted = (data) => {
-    if (data.callId === callId) {
-      setCallStatus('active');
-      if (!callStartTimeRef.current) {
-        callStartTimeRef.current = new Date();
-      }
-      toast.success('Video call started');
-    }
-  };
-
-  const handleCallEnded = (data) => {
-    if (data.callId === callId) {
-      setCallStatus('completed');
-      cleanup();
-      if (onCallEnd) {
-        onCallEnd(data.call);
-      }
-    }
-  };
-
-  const handleChatMessage = (data) => {
-    if (data.callId === callId) {
-      setChatHistory(prev => [...prev, {
-        sender: data.sender,
-        message: data.message,
-        timestamp: data.timestamp
-      }]);
-    }
-  };
+  
 
   const toggleVideo = () => {
     if (localStreamRef.current) {
@@ -387,19 +407,7 @@ const EmergencyCallInterface = ({ callId, onCallEnd }) => {
     }
   };
 
-  const cleanup = () => {
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach(track => track.stop());
-    }
-    
-    if (peerConnectionRef.current) {
-      peerConnectionRef.current.close();
-    }
-
-    if (socket) {
-      socket.emit('leave-emergency-call', callId);
-    }
-  };
+  
 
   const formatDuration = (seconds) => {
     const mins = Math.floor(seconds / 60);

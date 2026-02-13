@@ -5,7 +5,6 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { useSocket } from '../../context/SocketContext';
 import emergencyService from '../../services/emergencyService';
 import toast from 'react-hot-toast';
 import {
@@ -16,7 +15,6 @@ import {
 
 const EmergencyButton = ({ onEmergencyCall }) => {
   const { user } = useAuth();
-  const { socket } = useSocket();
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
