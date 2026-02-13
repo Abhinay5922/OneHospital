@@ -3,7 +3,7 @@
  * Comprehensive hospital information with booking functionality
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQueryClient } from 'react-query';
 import { useAuth } from '../../context/AuthContext';
@@ -17,15 +17,13 @@ import {
   EnvelopeIcon,
   StarIcon,
   ClockIcon,
-  UsersIcon,
   BuildingOfficeIcon,
   UserIcon,
   HeartIcon,
   CheckCircleIcon,
   XCircleIcon,
   ArrowPathIcon,
-  CalendarIcon,
-  InformationCircleIcon
+  CalendarIcon
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
 
@@ -53,29 +51,7 @@ const HospitalDetails = () => {
   const [bookingLoading, setBookingLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    if (hospitalId) {
-      fetchHospitalDetails();
-    }
-  }, [hospitalId]);
-
-  // Auto-refresh stats every 30 seconds when on overview tab
-  useEffect(() => {
-    let interval;
-    if (activeTab === 'overview' && hospital) {
-      interval = setInterval(() => {
-        fetchHospitalDetails(true);
-      }, 30000); // 30 seconds
-    }
-    
-    return () => {
-      if (interval) {
-        clearInterval(interval);
-      }
-    };
-  }, [activeTab, hospital, hospitalId]);
-
-  const fetchHospitalDetails = async (showRefreshIndicator = false) => {
+  const fetchHospitalDetails = useCallback(async (showRefreshIndicator = false) => {
     try {
       if (showRefreshIndicator) {
         setRefreshing(true);
@@ -112,7 +88,29 @@ const HospitalDetails = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [hospitalId]);
+
+  useEffect(() => {
+    if (hospitalId) {
+      fetchHospitalDetails();
+    }
+  }, [hospitalId, fetchHospitalDetails]);
+
+  // Auto-refresh stats every 30 seconds when on overview tab
+  useEffect(() => {
+    let interval;
+    if (activeTab === 'overview' && hospital) {
+      interval = setInterval(() => {
+        fetchHospitalDetails(true);
+      }, 30000); // 30 seconds
+    }
+    
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [activeTab, hospital, fetchHospitalDetails]);
 
   const handleBookAppointment = (doctor) => {
     if (!user) {

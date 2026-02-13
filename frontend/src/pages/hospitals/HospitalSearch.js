@@ -3,14 +3,13 @@
  * Search and filter hospitals with real-time queue information
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from 'react-query';
 import { hospitalService } from '../../services/hospitalService';
 import {
   MagnifyingGlassIcon,
   MapPinIcon,
-  ClockIcon,
   UsersIcon,
   FunnelIcon,
   BuildingOffice2Icon,
